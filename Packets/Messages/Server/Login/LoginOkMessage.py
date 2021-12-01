@@ -35,7 +35,7 @@ class LoginOkMessage(Writer):
         self.writeString("https://game-assets.brawlstarsgame.com")
         self.writeString("http://a678dbc1c015a893c9fd-4e8cc3b1ad3a3c940c504815caefa967.r87.cf2.rackcdn.com")
         self.writeInt(2) # Url Entry Array Count
-        self.writeString("https://raw.githubusercontent.com/Icaro072/Project-LaserScratch/main/EventAssets/") # Event Assets
+        self.writeString("https://raw.githubusercontent.com/Icaro072/Project-LaserScratch/main/Files/EventAssets/") # Event Assets
         self.writeString("https://24b999e6da07674e22b0-8209975788a0f2469e68e84405ae4fcf.ssl.cf2.rackcdn.com/event-assets")
         self.writeVInt(0) # Seconds Until Account Deletion
         self.writeCompressedString(b'') # Supercell ID Token

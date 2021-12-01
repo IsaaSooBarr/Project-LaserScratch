@@ -1,7 +1,5 @@
 from Packets.Messages.Server.Battle.MatchMakingStatusMessage import MatchMakingStatusMessage
-from Packets.Messages.Server.Battle.UdpConnectionInfoMessage import UdpConnectionInfoMessage
 from Utility.ByteStream import Reader
-import time
 
 
 class MatchmakeRequestMessage(Reader):

@@ -13,7 +13,7 @@ class LobbyInfoMessage(Writer):
 
     def encode(self):
         self.writeVInt(self.count) # Players Online
-        self.writeString(f"Project LaserScratch\nVersion: {self.player.Major}.{self.player.Minor}.{self.player.Revision}\n{Utils.getLobbyInfoCurrentDate(self)}")
+        self.writeString(f"Project LaserScratch (v1.0.2)\nVersion: {self.player.Major}.{self.player.Minor}.{self.player.Revision}\n{Utils.getLobbyInfoCurrentDate(self)}")
         
         
         # Lobby Info Entry Array
