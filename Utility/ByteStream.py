@@ -9,65 +9,40 @@ class Writer:
         self.buffer = b''
 
 
-    def writeInt(self, data, length = 4):
-        self.buffer += data.to_bytes(length, self.endian, signed=True)
-        
-
-    def writeIntLE(self, data, length=4):
-        self.buffer += data.to_bytes(length, 'little')
-
-
-    def writeUInteger(self, integer: int, length: int = 1):
-        self.buffer += integer.to_bytes(length, self.endian, signed=False)
-
-
-    def writeLong(self, x, y):
-        self.writeInt(x)
-        self.writeInt(y)
-
-
-    def writeLogicLong(self, x, y):
-        self.writeVInt(x)
-        self.writeVInt(y)
-
-
-    def writeArrayVInt(self, data):
-        if len(data) >= 1:
-            self.writeVInt(len(data))
-            for x in data:
-                self.writeVInt(x)
+    def writeInt(self, data: int, length: int = 4):
+        if data > 0:
+            self.buffer += data.to_bytes(length, 'big', signed=False)
         else:
-            self.writeVInt(0)
+            self.buffer += data.to_bytes(length, 'big', signed=True)
 
 
-    def writeUInt8(self, integer: int):
-        self.writeUInteger(integer)
-
-
-    def writeInt8(self, integer: int):
-        self.writeInt(integer, 1)
+    def writeInt8(self, data):
+        self.writeInt(data, 1)
 
 
     def writeInt16(self, data):
         self.writeInt(data, 2)
 
 
-    def writeBoolean(self, *args):
-        boolean = 0
-        i = 0
-        for value in args:
-            if value:
-                boolean |= 1 << i
-            i += 1
-        self.writeByte(boolean)
+    def writeInt24(self, data):
+        self.writeInt(data, 3)
 
 
-    def writeHexa(self, data):
-        if data:
-            if data.startswith('0x'):
-                data = data[2:]
-            self.buffer += bytes.fromhex(''.join(data.split()).replace('-', ''))
-            
+    def writeIntLE(self, data, length=4):
+        self.buffer += data.to_bytes(length, 'little')
+
+
+    def writeLong(self, high, low):
+        self.buffer += high.to_bytes(4, 'big') + low.to_bytes(4, 'big')
+
+
+    def writeUInteger(self, data: int, length: int = 1):
+        self.buffer += data.to_bytes(length, 'big', signed=False)
+
+
+    def writeUInt8(self, integer: int):
+        self.writeUInteger(integer)
+        
 
     def writeVInt(self, data, rotate: bool = True):
         final = b''
@@ -95,37 +70,55 @@ class Writer:
         self.buffer += final
 
 
-    def writeDataReference(self, x, y=0):
-        if x >= 1 and y >= 0:
-            self.writeVInt(x)
-            self.writeVInt(y)
+    def writeArrayVInt(self, arraydata):
+        self.writeVInt(len(arraydata))
+        for i in arraydata:
+            self.writeVInt(i)
+
+
+    def writeLogicLong(self, high, low):
+        self.writeVInt(high)
+        self.writeVInt(low)
+
+
+    def writeDataReference(self, ClassID, InstanceID=0):
+        if ClassID >= 1 and InstanceID >= 0:
+            self.writeVInt(ClassID)
+            self.writeVInt(InstanceID)
         else:
             self.writeVInt(0)
 
 
-    def writeString(self, string: str = None):
+    def writeBoolean(self, *args):
+        boolean = 0
+        i = 0
+        for value in args:
+            if value:
+                boolean |= 1 << i
+            i += 1
+        self.writeByte(boolean)
+
+
+    def writeString(self, string = None):
         if string is None:
-            self.writeInt(-1)
+            self.writeInt((2 ** 32) - 1)
         else:
-            encoded = string.encode('utf-8')
+            if type(string) == bytes:
+                encoded = string
+            else:
+                encoded = string.encode('utf-8')
             self.writeInt(len(encoded))
             self.buffer += encoded
 
 
-    def writeStringShort(self, string: str = None):
+    def writeStringReference(self, string = None):
         if string is None:
-            self.writeInt(-1)
+            self.writeInt((2 ** 32) - 1)
         else:
-            encoded = string.encode('utf-8')
-            self.writeInt8(len(encoded))
-            self.buffer += encoded
-
-
-    def writeStringReference(self, string: str = None):
-        if string is None:
-            self.writeInt(-1)
-        else:
-            encoded = string.encode('utf-8')
+            if type(string) == bytes:
+                encoded = string
+            else:
+                encoded = string.encode('utf-8')
             self.writeInt(len(encoded))
             self.buffer += encoded
         
@@ -138,7 +131,19 @@ class Writer:
 
 
     def writeByte(self, data):
-        self.buffer += data.to_bytes(1, 'big', signed=False)
+        if data > 255:
+            self.buffer += data.to_bytes(2, 'big', signed=False)
+        elif data > 127:
+            self.buffer += data.to_bytes(1, 'big', signed=False)
+        else:
+            self.buffer += data.to_bytes(1, 'big', signed=True)
+
+
+    def writeHexa(self, data):
+        if data:
+            if data.startswith('0x'):
+                data = data[2:]
+            self.buffer += bytes.fromhex(''.join(data.split()).replace('-', ''))
 
 
     def size(self):
@@ -167,7 +172,7 @@ class Writer:
         self.encode()
         packet = self.buffer
         self.buffer = self.id.to_bytes(2, 'big', signed=True)
-        self.writeInt(len(packet), 3)
+        self.writeInt24(len(packet))
         if hasattr(self, 'version'):
             self.writeInt16(self.version)
         else:
@@ -178,53 +183,119 @@ class Writer:
 
 
 class Reader(BufferedReader):
-    def __init__(self, initial_bytes, endian: str = 'big'):
-        super().__init__(BytesIO(initial_bytes))
-        self.buffer = initial_bytes
-        self.endian = endian
-        self.i = 0
+    def __init__(self, header_bytes):
+        super().__init__(BytesIO(header_bytes))
+        self.bytes_of_packets = header_bytes
+
+
+    def readInt(self):
+        return int.from_bytes(self.read(4), "big")
+
+
+    def readInt8(self):
+        return int.from_bytes(self.read(1), "big")
+
+
+    def readInt16(self):
+        return int.from_bytes(self.read(2), "big")
+
+
+    def readInt24(self):
+        return int.from_bytes(self.read(3), "big")
+
+
+    def readIntLE(self):
+        return int.from_bytes(self.read(4), "little")
+
+
+    def readLong(self):
+        high = self.readInt()
+        low = self.readInt()
+        return high, low
+
+
+    def readUInteger(self, length: int = 1, endian: str = 'big'):
+        result = 0
+        i = 0
+        for x in range(length):
+            byte = self.bytes_of_packets[i]
+            bit_padding = x * 8
+            if endian == 'big':
+                bit_padding = (8 * (length - 1)) - bit_padding
+            result |= byte << bit_padding
+            i += 1
+        return result
+
+
+    def readUInt8(self):
+        return self.readUInteger()
+
+
+    def readVInt(self):
+        n = self.readVarInt(True)
+        return (n >> 1) ^ (-(n & 1))
+
+
+    def readLogicLong(self):
+        high = self.readVInt()
+        low = self.readVInt()
+        return high, low
+
+
+    def readDataReference(self):
+        ClassID = self.readVInt()
+        if ClassID != 0:
+            InstanceID = self.readVInt()
+        else:
+            InstanceID = -1
+        return ClassID, InstanceID
+
+
+    def readBoolean(self):
+        result = bool.from_bytes(bytes=self.read(1), byteorder='big', signed=False)
+        if result == True:
+            return True
+        else:
+            return False
+
+
+    def readString(self):
+        lenght = self.readInt()
+        if lenght == pow(2, 32) - 1:
+            return b""
+        else:
+            try:
+                decoded = self.read(lenght)
+            except MemoryError:
+                raise IndexError("String out of range.")
+            else:
+                return decoded.decode('utf-8')
+
+
+    def readStringReference(self):
+        return self.readString()
+
+
+    def readCompressedString(self):
+        self.readInt()
+        data_length = self.readIntLE()
+        compressed = self.readBytes(data_length)
+        return zlib.decompress(compressed)
 
 
     def readByte(self):
         return int.from_bytes(self.read(1), "big")
 
 
-    def readVInt(self):
-        n = self.readVarint(True)
-        return (n >> 1) ^ (-(n & 1))
+    def readBytes(self, length):
+        return self.read(length)
 
 
     def readShort(self, length=2):
         return int.from_bytes(self.read(length), "big")
 
 
-    def readInt(self, length=4):
-        return int.from_bytes(self.read(length), "big")
-
-
-    def readLong(self):
-        x = self.readInt()
-        y = self.readInt()
-        return x, y
-
-
-    def readUInt8(self) -> int:
-        return self.readUInteger()*64
-
-
-    def readUInteger(self, length: int = 1) -> int:
-        result = 0
-        for x in range(length):
-            byte = self.buffer[self.i]
-            bit_padding = x * 8
-            if self.endian == 'big':
-                bit_padding = (8 * (length - 1)) - bit_padding
-            result |= byte << bit_padding
-            self.i += 1
-        return result
-
-
-    def readVarint(self, rotate: bool = True):
+    def readVarInt(self, rotate: bool = True):
         result = 0
         shift = 0
         while True:
@@ -242,40 +313,5 @@ class Reader(BufferedReader):
         return result
 
 
-    def readBoolean(self) -> bool:
-        if self.readByte() >= 1:
-            return True
-        else:
-            return False
-
-
-    def readDataReference(self):
-        a = self.readVInt()
-        if a != 0:
-            b = self.readVInt()
-        else:
-            b = -1
-        return a, b
-
-
-    def readString(self):
-        length = self.readInt()
-        if length == pow(2, 32) - 1:
-            return b""
-        else:
-            try:
-                decoded = self.read(length)
-            except MemoryError:
-                raise IndexError("String out of range!")
-            else:
-                return decoded.decode('utf-8')
-
-
     def peekInt(self, length=4):
         return int.from_bytes(self.peek(length)[:length], "big")
-
-
-    def readLogicLong(self):
-        x = self.readVInt()
-        y = self.readVInt()
-        return x, y
