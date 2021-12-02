@@ -13,7 +13,7 @@ class AppleBillingRequestMessage(Reader):
         self.ProdId = self.readString()
         self.CurrencyCode = self.readString()
         self.Price = self.readString()
-        self.ReceiptDataLength = self.readBytes()
+        #self.ReceiptDataLength = self.readBytes()
         
         
     def process(self):

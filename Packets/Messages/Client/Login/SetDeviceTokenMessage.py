@@ -9,8 +9,9 @@ class SetDeviceTokenMessage(Reader):
 
 
     def decode(self):
-        self.DeviceToken = self.readBytes()
-        self.AntihackFlags = self.readInt()
+        #self.DeviceToken = self.readBytes()
+        #self.AntihackFlags = self.readInt()
+        pass
 
 
     def process(self):
