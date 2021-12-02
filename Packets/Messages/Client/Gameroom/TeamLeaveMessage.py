@@ -1,7 +1,7 @@
 from Utility.ByteStream import Reader
 
 
-class ClientCapabilitiesMessage(Reader):
+class TeamLeaveMessage(Reader):
     def __init__(self, client, player, initial_bytes):
         super().__init__(initial_bytes)
         self.player = player
@@ -9,8 +9,8 @@ class ClientCapabilitiesMessage(Reader):
 
 
     def decode(self):
-        self.Ping = self.readVInt()
-
+        pass
+        
 
     def process(self):
-    	pass
+        pass

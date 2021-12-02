@@ -1,7 +1,7 @@
 from Utility.ByteStream import Reader
 
 
-class ClientCapabilitiesMessage(Reader):
+class SetDeviceTokenMessage(Reader):
     def __init__(self, client, player, initial_bytes):
         super().__init__(initial_bytes)
         self.player = player
@@ -9,8 +9,9 @@ class ClientCapabilitiesMessage(Reader):
 
 
     def decode(self):
-        self.Ping = self.readVInt()
+        self.DeviceToken = self.readBytes()
+        self.AntihackFlags = self.readInt()
 
 
     def process(self):
-    	pass
+        pass

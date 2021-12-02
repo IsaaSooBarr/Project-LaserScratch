@@ -1,7 +1,7 @@
 from Utility.ByteStream import Reader
 
 
-class ClientCapabilitiesMessage(Reader):
+class AccountSwitchedMessage(Reader):
     def __init__(self, client, player, initial_bytes):
         super().__init__(initial_bytes)
         self.player = player
@@ -9,8 +9,10 @@ class ClientCapabilitiesMessage(Reader):
 
 
     def decode(self):
-        self.Ping = self.readVInt()
+        self.SwitchedToAccountId = self.readLong()
+        self.readByte()
+        self.readString()
 
 
     def process(self):
-    	pass
+        pass
