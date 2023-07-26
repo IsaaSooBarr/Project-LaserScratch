@@ -23,9 +23,8 @@ Brawl Stars open source server for v20!
 
 
 ## Authors
-👤 **Icaro**
-* Github: [@Icaro072](https://github.com/Icaro072)
-* Discord: TheIke#1606
+👤 **Isadora**
+* Github: [@Isaa](https://github.com/IsaaSooBarr)
 
 
 Contributors:
